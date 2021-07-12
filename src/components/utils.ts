@@ -1,4 +1,14 @@
-import { ITableData, Point, IHole, IFloorBaseData, IRoomData } from './IInterface'
+import { 
+    ITableData, 
+    Point, 
+    IHole, 
+    IFloorBaseData,
+    IIcondata,
+    IRoomData, 
+    IGeoJSON, 
+    IShape, 
+    ICanvasSize, 
+    IBuildRect } from './IInterface'
 import { isPointInPolygon } from './math'
 
 /**
@@ -22,6 +32,12 @@ function isPointInFloor(point: Point, floorBaseData: IFloorBaseData): boolean {
     }
 }
 
+/**
+ * 点位是否在工位范围内
+ * @param point 
+ * @param tables 
+ * @returns 
+ */
 function isOnTable(point: Point, tables: ITableData[]): ITableData|null {
     for(let i = 0; i < tables.length; i++) {
         let table = tables[i]
@@ -33,6 +49,12 @@ function isOnTable(point: Point, tables: ITableData[]): ITableData|null {
     return null
 }
 
+/**
+ * 点位是否在房间范围内
+ * @param point 
+ * @param rooms 
+ * @returns 
+ */
 function isOnRoom(point: Point, rooms: IRoomData[]): IRoomData|null {
     for(let i = 0; i < rooms.length; i++) {
         let table = rooms[i]
@@ -44,13 +66,56 @@ function isOnRoom(point: Point, rooms: IRoomData[]): IRoomData|null {
     return null
 }
 
+function isOnIcon(point: Point, icons: IIcondata[], iconSize: number): IIcondata|null {
+    let step = iconSize/2
+    for(let i = 0; i < icons.length;i++) {
+        let icon = icons[i]
+        let { center } = icon
+        if(point[0] > center[0] - step && point[0] < center[0] + step &&
+            point[1] > center[1] - step && point[1] < center[1] + step
+            ) {
+                return icon
+        }
+    }
+    return null
+}
+
 function getDrawTableData(data: ITableData[]): boolean {
     return false
+}
+
+/**
+ * 将 geojson 的数据转化为相对坐标的数据
+ * @param geojson 
+ * @param canvasSize 
+ * @param buildRect 
+ * @returns 
+ */
+function geoJSON2Floor(geojson: IGeoJSON, canvasSize: ICanvasSize, buildRect: IBuildRect) {
+    let { width: canvasWidth, height: canvasHeight } = canvasSize
+    let { minLng, maxLng, minLat, maxLat } = buildRect
+    let lngStep = maxLng - minLng
+    let latStep = maxLat - minLat
+
+    let res: IShape = geojson.geometry.coordinates[0]?.map((point: Point) => {
+        let [lng, lat] = point
+        return [
+            canvasWidth*((lng - minLng)/lngStep),
+            canvasHeight*((lat - minLat)/latStep)
+        ]
+    })
+    let floorData: IFloorBaseData = {
+        shape: res,
+        holes: []
+    }
+    return floorData
 }
 
 export {
     getDrawTableData,
     isPointInFloor,
     isOnTable,
-    isOnRoom
+    isOnRoom,
+    isOnIcon,
+    geoJSON2Floor
 }
